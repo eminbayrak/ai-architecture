@@ -1,0 +1,25 @@
+roles:
+  intake:
+    specialty: structured extraction
+    models:
+      economy: gpt-4.1-mini
+      standard: gpt-4.1-mini
+      high: gpt-4.1-mini
+  research:
+    specialty: scoping / risks
+    models:
+      economy: gpt-4.1-mini
+      standard: gpt-4.1-mini
+      high: gpt-4.1-mini
+  eval:
+    specialty: architecture + evals
+    models:
+      economy: gpt-4.1-mini
+      standard: gpt-4.1
+      high: gpt-4.1
+  delivery:
+    specialty: plan + customer writing
+    models:
+      economy: gpt-4.1-mini
+      standard: gpt-4.1
+      high: gpt-4.1

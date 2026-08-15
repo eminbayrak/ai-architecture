@@ -1,0 +1,5 @@
+watch skill engine
+
+Upstream: https://github.com/taoufik123-collab/claude-watch
+License: MIT (see SKILL.md frontmatter)
+Copied into this repo as the engine behind skills/transcribe-video.

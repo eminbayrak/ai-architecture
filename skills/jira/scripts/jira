@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Jira Data Center CLI. Source atlassian-env.sh for the raw `jira` curl wrapper,
+# or run this script for get / transitions / comment / create.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=atlassian-env.sh
+source "${SCRIPT_DIR}/atlassian-env.sh"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  jira GET|POST|PUT|DELETE <path> [json-body]
+  jira get <KEY-or-browse-URL>
+  jira transitions <KEY-or-URL>
+  jira transition <KEY-or-URL> <status-name>
+  jira comment <KEY-or-URL> <text>
+  jira create <PROJECT> <summary> [--type Task]
+  jira parse-key <KEY-or-URL>
+  jira find-transition <status-name>   # JSON on stdin
+
+Prefix any command with --dry-run to print curl (token redacted).
+EOF
+}
+
+DRY=()
+if [[ "${1:-}" == "--dry-run" ]]; then
+  DRY=(--dry-run)
+  shift
+fi
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  -h | --help | help | "")
+    usage
+    exit 0
+    ;;
+  parse-key)
+    parse_issue_key "${1:?key or URL required}"
+    ;;
+  find-transition)
+    find_transition_id "${1:?status name required}"
+    ;;
+  GET | POST | PUT | DELETE | PATCH)
+    jira "${DRY[@]}" "$cmd" "$@"
+    ;;
+  get)
+    key="$(parse_issue_key "${1:?issue key or URL required}")"
+    jira "${DRY[@]}" GET "/rest/api/2/issue/${key}"
+    ;;
+  transitions)
+    key="$(parse_issue_key "${1:?issue key or URL required}")"
+    jira "${DRY[@]}" GET "/rest/api/2/issue/${key}/transitions"
+    ;;
+  transition)
+    key="$(parse_issue_key "${1:?issue key or URL required}")"
+    status_name="${2:?status name required}"
+    if [[ ${#DRY[@]} -gt 0 ]]; then
+      jira --dry-run GET "/rest/api/2/issue/${key}/transitions"
+      printf '# then POST /rest/api/2/issue/%s/transitions with the matching transition id for %q\n' "$key" "$status_name"
+      exit 0
+    fi
+    trans_json="$(jira GET "/rest/api/2/issue/${key}/transitions")"
+    tid="$(printf '%s' "$trans_json" | find_transition_id "$status_name")"
+    jira POST "/rest/api/2/issue/${key}/transitions" "$(printf '{"transition":{"id":"%s"}}' "$tid")"
+    printf 'Transitioned %s -> %s (id %s)\n' "$key" "$status_name" "$tid"
+    ;;
+  comment)
+    key="$(parse_issue_key "${1:?issue key or URL required}")"
+    text="${2:?comment text required}"
+    body="$(jira_python -c 'import json,sys; print(json.dumps({"body": sys.argv[1]}))' "$text")"
+    jira "${DRY[@]}" POST "/rest/api/2/issue/${key}/comment" "$body"
+    ;;
+  create)
+    project="${1:?project key required}"
+    summary="${2:?summary required}"
+    shift 2 || true
+    itype="Task"
+    if [[ "${1:-}" == "--type" ]]; then
+      itype="${2:?issue type required}"
+    fi
+    body="$(jira_python -c 'import json,sys; print(json.dumps({"fields":{"project":{"key":sys.argv[1]},"summary":sys.argv[2],"issuetype":{"name":sys.argv[3]}}}))' "$project" "$summary" "$itype")"
+    jira "${DRY[@]}" POST "/rest/api/2/issue" "$body"
+    ;;
+  *)
+    printf 'Unknown command: %s\n' "$cmd" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

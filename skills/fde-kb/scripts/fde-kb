@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# FDE knowledge base CLI. uv run --script installs sqlite-vec + model2vec
+# from the internal index (UV_DEFAULT_INDEX / FDE_KB_UV_INDEX). Prefers a
+# Python that can load SQLite extensions (vec0). Public PyPI is not used.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY="${SCRIPT_DIR}/fde_kb.py"
+UV_INDEX_HINT='fde-kb: FDE_KB_UV_INDEX / UV_DEFAULT_INDEX is not set. Point it at the internal package index (sqlite-vec, model2vec). Public PyPI is not used. Development only: FDE_KB_ALLOW_PUBLIC_INDEX=1.'
+
+_fill_unset_from_env_file() {
+  local f="$1"
+  [ -f "$f" ] || return 0
+  local line key val
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in
+      ''|\#*) continue ;;
+      export\ *) line="${line#export }" ;;
+    esac
+    case "$line" in
+      *=*) ;;
+      *) continue ;;
+    esac
+    key="${line%%=*}"
+    val="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    case "$key" in
+      UV_DEFAULT_INDEX|UV_INDEX_URL|FDE_KB_UV_INDEX|FDE_KB_ALLOW_PUBLIC_INDEX) ;;
+      *) continue ;;
+    esac
+    case "$key" in
+      UV_DEFAULT_INDEX) [ -n "${UV_DEFAULT_INDEX+x}" ] && continue ;;
+      UV_INDEX_URL) [ -n "${UV_INDEX_URL+x}" ] && continue ;;
+      FDE_KB_UV_INDEX) [ -n "${FDE_KB_UV_INDEX+x}" ] && continue ;;
+      FDE_KB_ALLOW_PUBLIC_INDEX) [ -n "${FDE_KB_ALLOW_PUBLIC_INDEX+x}" ] && continue ;;
+    esac
+    val="${val#"${val%%[![:space:]]*}"}"
+    val="${val%"${val##*[![:space:]]}"}"
+    val="${val#\"}"; val="${val%\"}"
+    val="${val#\'}"; val="${val%\'}"
+    export "${key}=${val}"
+  done < "$f"
+}
+
+_load_launcher_env() {
+  local start walk i
+  for start in "${PWD}" "${SCRIPT_DIR}"; do
+    walk="${start}"
+    for i in 1 2 3 4 5 6 7 8; do
+      _fill_unset_from_env_file "${walk}/.env"
+      if [ "${walk}" = "/" ] || [ "${walk}" = "${walk%/*}" ]; then
+        break
+      fi
+      walk="${walk%/*}"
+      [ -n "${walk}" ] || break
+    done
+  done
+}
+
+ensure_uv_index() {
+  if [ -n "${UV_DEFAULT_INDEX:-}" ]; then
+    export UV_INDEX_URL="${UV_INDEX_URL:-${UV_DEFAULT_INDEX}}"
+    return 0
+  fi
+  if [ -n "${FDE_KB_UV_INDEX:-}" ]; then
+    export UV_DEFAULT_INDEX="${FDE_KB_UV_INDEX}"
+    export UV_INDEX_URL="${UV_INDEX_URL:-${FDE_KB_UV_INDEX}}"
+    return 0
+  fi
+  case "${FDE_KB_ALLOW_PUBLIC_INDEX:-}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+  esac
+  echo "${UV_INDEX_HINT}" >&2
+  exit 1
+}
+
+python_with_sqlite_ext() {
+  local py
+  for py in \
+    "${FDE_KB_PYTHON:-}" \
+    /opt/homebrew/bin/python3.12 \
+    /opt/homebrew/bin/python3 \
+    /usr/local/opt/python@3.12/bin/python3.12 \
+    python3.12 \
+    python3
+  do
+    [ -n "${py}" ] || continue
+    if [ ! -x "${py}" ] && ! command -v "${py}" >/dev/null 2>&1; then
+      continue
+    fi
+    if "${py}" -c "import sqlite3; c=sqlite3.connect(':memory:'); raise SystemExit(0 if hasattr(c,'enable_load_extension') else 1)" 2>/dev/null; then
+      printf '%s\n' "${py}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+_load_launcher_env
+
+if command -v uv >/dev/null 2>&1; then
+  ensure_uv_index
+  if PYBIN="$(python_with_sqlite_ext)"; then
+    exec uv run --python "${PYBIN}" --script "${PY}" "$@"
+  fi
+  exec uv run --script "${PY}" "$@"
+fi
+
+if [ -n "${FDE_KB_PYTHON:-}" ]; then
+  exec "${FDE_KB_PYTHON}" "${PY}" "$@"
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "${PY}" "$@"
+fi
+
+if command -v python >/dev/null 2>&1; then
+  exec python "${PY}" "$@"
+fi
+
+echo "fde-kb: need uv (preferred) or Python 3.12+ on PATH" >&2
+exit 1

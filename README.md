@@ -51,7 +51,7 @@ python scripts/link-skills.py
 
 **Jira (company Data Center):** `skills/jira` — Bearer PAT. One launcher: bash, else PowerShell, else Python stdlib. No extra installs. Token: `~/.config/atlassian/jira.token` or `%USERPROFILE%\.config\atlassian\jira.token`. See `skills/jira/README.md`.
 
-**FDE knowledge base:** `skills/fde-kb` - Obsidian vault as source of truth, local SQLite as vectorized memory (FTS5 + sqlite-vec, Model2Vec). Set `FDE_KB_VAULT`, then `./skills/fde-kb/scripts/fde-kb index` and `search` (Windows: `skills\fde-kb\scripts\fde-kb.cmd`). See `skills/fde-kb/README.md`.
+**FDE knowledge base:** `skills/fde-kb` - Obsidian vault as source of truth, local SQLite as search memory (FTS5 always; sqlite-vec + Model2Vec when a local snapshot is present). Copy the folder to `.poolside/skills/fde-kb`, set `FDE_KB_VAULT`, then `index` / `search`. See `skills/fde-kb/README.md` and `skills/fde-kb/docs/demo-walkthrough.md`.
 
 **Transcripts:** `transcribe-video` is the operator-facing skill; `watch` is the engine it calls.
 

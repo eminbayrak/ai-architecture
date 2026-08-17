@@ -5,17 +5,17 @@ The content is deliberately generic engineering-practice material. It is not a
 sample corpus for the skill (the skill ships none on purpose) and it must never
 be pointed at, copied into, or merged with a real vault.
 
-Usage:
+Usage::
 
     python skills/fde-kb/scripts/make-test-vault.py --dest /tmp/kb-test-vault
-    py -3 .poolside\skills\fde-kb\scripts\make-test-vault.py --dest C:\temp\kb-test-vault
+    python .poolside/skills/fde-kb/scripts/make-test-vault.py --dest C:/temp/kb-test-vault
 
-Then:
+Then::
 
-    set FDE_KB_VAULT=C:\temp\kb-test-vault
-    set FDE_KB_DB=C:\temp\kb-test.sqlite
-    .poolside\skills\fde-kb\scripts\fde-kb.cmd index
-    .poolside\skills\fde-kb\scripts\fde-kb.cmd eval
+    set FDE_KB_VAULT=C:/temp/kb-test-vault
+    set FDE_KB_DB=C:/temp/kb-test.sqlite
+    .poolside/skills/fde-kb/scripts/fde-kb.cmd index
+    .poolside/skills/fde-kb/scripts/fde-kb.cmd eval
 
 Every note satisfies assets/schemas/note.schema.json (in this skill) and lives in
 the folder its type requires. Golden queries are paraphrases rather than

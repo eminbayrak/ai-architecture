@@ -4,7 +4,7 @@ Internal Poolside Agent Skill. Obsidian vault is the source of truth. A local SQ
 
 System design (retrieval, write path, launcher gates, trust boundary): [docs/architecture.md](docs/architecture.md).
 
-This is the same architecture used in production Obsidian retrievers: chunk on headings, dual index in one SQLite file, Reciprocal Rank Fusion. The skill does not ship a sample vault. Staff fill the company vault. Eval uses a golden JSONL that lives in that vault.
+This is the same pattern used in many local Obsidian retrievers: chunk on headings, dual index in one SQLite file, Reciprocal Rank Fusion when vectors are available. The skill does not ship a sample vault of real notes. Eval uses a golden JSONL that lives in that vault.
 
 **Copy-over:** this entire `fde-kb/` folder is self-contained. Place it at `.poolside/skills/fde-kb`. You do not need the rest of a parent kit.
 
@@ -15,7 +15,7 @@ Needs Python 3.12+ and `uv`. On Windows, `fde-kb.cmd` uses PowerShell (built-in)
 The supported install path has no route to public PyPI or Hugging Face:
 
 - Point `uv` at the internal index. Set `FDE_KB_UV_INDEX` (or `UV_DEFAULT_INDEX`) in the environment or repo-root `.env`. All three launchers export that as `UV_DEFAULT_INDEX` / `UV_INDEX_URL` before `uv run --script`. If it is unset, the launcher prints one line and exits 1. It does not fall back to public PyPI.
-- Clone and index. Search works immediately with lexical FTS5. Model weights are **not** in git. Hybrid / semantic embeddings load only if the approved `potion-base-8M` snapshot is already on the machine (`FDE_KB_MODEL`, or `~/.cache/fde-kb/models/potion-base-8M`). If it is absent, `index` / `search` print one line and continue lexical-only. Hugging Face is not contacted.
+- Clone and index. Search works immediately with lexical FTS5. Model weights are **not** in this folder. Hybrid / semantic embeddings load only if the approved `potion-base-8M` snapshot is already on the machine (`FDE_KB_MODEL`, or `%LOCALAPPDATA%\fde-kb\models\potion-base-8M` on Windows / `~/.cache/fde-kb/models/potion-base-8M` elsewhere). If it is absent, `index` / `search` print one line and continue lexical-only. Hugging Face is not contacted.
 
 Development only (laptops/CI): `FDE_KB_ALLOW_PUBLIC_INDEX=1`. Leave it unset when packages must come from your configured index.
 
@@ -75,21 +75,25 @@ evals/          eval notes, plus golden.jsonl for retrieval eval
 
 Golden JSONL schema: `assets/schemas/golden-case.schema.json`. One object per line: `{"query": "...", "path": "playbooks/....md"}`.
 
-This repo ships templates and tests. Pytest builds temp notes in `tmp_path`. It does not ship company notes.
+This skill ships templates and tests. Pytest builds temp notes in `tmp_path`. It does not ship a sample vault of real notes. `scripts/make-test-vault.py` can generate a throwaway vault for demos.
 
 ## Agent discovery
 
-Agent Skills format (`SKILL.md`). Poolside scans `.poolside/skills/`, not `skills/`. Git symlinks do not work on a normal Windows clone. After checkout:
+Agent Skills format (`SKILL.md`). Poolside scans `.poolside/skills/`.
+
+**Copy-over (what you did for work):** put this whole `fde-kb/` folder at `.poolside/skills/fde-kb`. No link script required.
+
+**Kit layout (skills/ + .poolside/skills/):** after clone, junctions/symlinks:
 
 ```bat
-py -3 scripts\link-skills.py
+python scripts\link-skills.py
 ```
 
 ```bash
 python scripts/link-skills.py
 ```
 
-That creates directory junctions on Windows (no Developer Mode, no elevation) or relative symlinks on macOS / Linux. If an existing clone already has a **file** named `.poolside/skills/fde-kb` whose contents are `../../skills/fde-kb`, delete that file and rerun the script.
+That creates directory junctions on Windows (no Developer Mode, no elevation) or relative symlinks on macOS / Linux. If an existing clone already has a **file** named `.poolside/skills/fde-kb` whose contents are `../../skills/fde-kb`, delete that file and rerun the script (or replace it with a real copy of this folder).
 
 Sandboxes do not mount the default index dir or a vault outside the workspace unless you add an extra mount.
 
@@ -121,4 +125,4 @@ Nobody writes frontmatter by hand. The agent picks `--type`, `--title`, and `--t
 
 `python scripts/make-test-vault.py --dest /tmp/kb-test-vault` (from inside this skill folder) writes a throwaway vault of schema-valid notes plus a `golden.jsonl`, for verifying an install. It refuses to write into a directory that already holds markdown. It is a plumbing check, not a quality measurement: six notes against the default `k=8` cannot fail, so run `eval -k 1` if you want a number that can move.
 
-More docs in this folder: [architecture](docs/architecture.md).
+More docs in this folder: [architecture](docs/architecture.md), [demo walkthrough](docs/demo-walkthrough.md).

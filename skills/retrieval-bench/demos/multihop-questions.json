@@ -1,0 +1,32 @@
+[
+  {
+    "question": "A customer wants an £800 refund in March. Who signs it off?",
+    "needles": ["Marcus Webb", "delegates_to"],
+    "empty_ok": false,
+    "reason": "Multi-hop push: refund policy (>£500) → Ops Manager (Sarah Chen) → March leave → Marcus Webb. graph-memory should walk this; fde-kb often stops at the £500 handbook rule."
+  },
+  {
+    "question": "Who approves supplier payments over £2,000?",
+    "needles": ["Alex Doyle", "Founder"],
+    "empty_ok": false,
+    "reason": "Multi-hop: supplier policy → Founder role → Alex Doyle."
+  },
+  {
+    "question": "What is the onboarding process?",
+    "needles": ["Ops Manager", "checklist"],
+    "empty_ok": false,
+    "reason": "Process facts: who owns day-one onboarding."
+  },
+  {
+    "question": "What does Priya do?",
+    "needles": ["Support Lead", "Priya Patel"],
+    "empty_ok": false,
+    "reason": "Alias seeding: Priya → Priya Patel → Support Lead."
+  },
+  {
+    "question": "Who is in charge when the boss is away?",
+    "needles": ["this string is never in any repo"],
+    "empty_ok": true,
+    "reason": "Fail loud. \"boss\" is outside the vocabulary. A good skill says nothing instead of guessing."
+  }
+]

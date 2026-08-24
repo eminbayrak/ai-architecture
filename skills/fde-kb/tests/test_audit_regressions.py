@@ -637,8 +637,15 @@ def test_harness_skill_links_resolve_on_this_platform():
     git-symlink payload.
     """
     repo = SKILL.parents[1]
+    linker_spec = importlib.util.spec_from_file_location(
+        "link_skills_audit",
+        repo / "scripts" / "link-skills.py",
+    )
+    assert linker_spec is not None and linker_spec.loader is not None
+    linker = importlib.util.module_from_spec(linker_spec)
+    linker_spec.loader.exec_module(linker)
     broken = []
-    for name in ("fde-kb", "jira"):
+    for name in linker.HARNESS_SKILLS:
         entry = repo / ".poolside" / "skills" / name
         if (entry / "SKILL.md").is_file():
             continue

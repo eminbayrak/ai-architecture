@@ -621,6 +621,40 @@ def fts_match_query(query: str) -> str:
     return " AND ".join(parts) if parts else '""'
 
 
+COVERAGE_STOP = frozenset(
+    {
+        "a", "an", "the", "and", "or", "of", "to", "in", "on", "for", "how",
+        "what", "is", "are", "was", "were", "with", "from", "this", "that",
+        "it", "as", "be", "who", "does", "do", "did", "can", "we", "our",
+        "should", "when", "where", "which", "why", "if", "at", "by", "any",
+    }
+)
+WEAK_COVERAGE = 0.34
+WEAK_MATCH_HINT = (
+    "weak lexical match: the best hit covers under a third of the question's "
+    "terms. Treat these as maybe-relevant, not as the answer."
+)
+
+
+def content_terms(query: str) -> set[str]:
+    """Query words that carry meaning. Used to score how much of the ask was met."""
+    words = re.findall(r"\w+", query.lower(), flags=re.UNICODE)
+    return {w for w in words if len(w) > 1 and w not in COVERAGE_STOP}
+
+
+def term_coverage(terms: set[str], *fields: str) -> float:
+    """Fraction of the question's content terms present in this hit.
+
+    The `score` field is derived from rank alone (1/(k+rank)), so every top hit
+    scores the same whether it is the answer or a stray keyword collision.
+    Coverage is the part an agent can actually threshold on.
+    """
+    if not terms:
+        return 0.0
+    hay = set(re.findall(r"\w+", " ".join(fields).lower(), flags=re.UNICODE))
+    return len(terms & hay) / len(terms)
+
+
 def rrf_fuse(rank_lists: list[list], rrf_k: int = RRF_K) -> list[tuple]:
     scores: dict = {}
     for ranking in rank_lists:
@@ -1086,6 +1120,7 @@ def search(
     full: bool = False,
 ) -> list[dict]:
     pool = max(k * 8, 50)
+    query_terms = content_terms(query)
     lexical: list[int] = []
     semantic: list[int] = []
     if mode in {"hybrid", "lexical"}:
@@ -1156,10 +1191,17 @@ def search(
                 "path": path,
                 "heading": str(row[1]),
                 "score": float(score),
+                "coverage": round(
+                    term_coverage(query_terms, str(row[2]), str(row[1]), path), 3
+                ),
                 "text": text,
                 "source": source,
             }
         )
+    if results and warnings is not None:
+        best = max(float(r["coverage"]) for r in results)
+        if best < WEAK_COVERAGE and WEAK_MATCH_HINT not in warnings:
+            warnings.append(WEAK_MATCH_HINT)
     if warnings is not None and getattr(conn, "vec_degraded", False):
         msg = "chunks_vec query failed; cosine fallback"
         if msg not in warnings:

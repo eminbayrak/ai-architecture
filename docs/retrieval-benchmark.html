@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Retrieval skills benchmark · graph-memory · fde-kb · llm-wiki</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --bg-2: #161d26;
+      --bg-3: #1c2530;
+      --line: #2a3544;
+      --text: #e8eef4;
+      --muted: #93a1b1;
+      --dim: #6d7c8c;
+      --graph: #3dd6c6;
+      --kb: #4c8dff;
+      --wiki: #f5b942;
+      --llm: #e07a3d;
+      --ok: #5bd68a;
+      --warn: #f0c14b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+    body {
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .app { display: flex; min-height: 100vh; }
+    nav {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--bg-2);
+      border-right: 1px solid var(--line);
+      padding: 22px 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    nav h1 {
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+      margin: 0 0 16px;
+    }
+    nav a {
+      display: block;
+      color: var(--text);
+      text-decoration: none;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+    }
+    nav a:hover { background: var(--bg-3); }
+    main { flex: 1; padding: 28px 36px 64px; max-width: 1180px; }
+    h2 { font-size: 22px; font-weight: 650; margin: 0 0 8px; }
+    h3 { font-size: 16px; font-weight: 650; margin: 28px 0 10px; }
+    .sub { color: var(--muted); margin: 0 0 20px; max-width: 72ch; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0 24px; }
+    .card {
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .card .label { color: var(--muted); font-size: 12px; }
+    .card .value { font-size: 28px; font-weight: 700; margin-top: 4px; letter-spacing: -0.03em; }
+    .card .value.graph { color: var(--graph); }
+    .card .value.kb { color: var(--kb); }
+    .card .value.wiki { color: var(--wiki); }
+    .card .value.llm { color: var(--llm); }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0 16px; }
+    .swatch { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+    .dot { width: 10px; height: 10px; border-radius: 2px; }
+    .dot.graph { background: var(--graph); }
+    .dot.kb { background: var(--kb); }
+    .dot.wiki { background: var(--wiki); }
+    .dot.llm { background: var(--llm); }
+    .bars { display: grid; gap: 14px; }
+    .bar-row { display: grid; grid-template-columns: 180px 1fr 52px; gap: 10px; align-items: center; }
+    .bar-row span.name { color: var(--muted); font-size: 13px; }
+    .track { height: 18px; background: var(--bg-3); border-radius: 4px; overflow: hidden; }
+    .fill { height: 100%; border-radius: 4px; }
+    .fill.graph { background: var(--graph); }
+    .fill.kb { background: var(--kb); }
+    .fill.wiki { background: var(--wiki); }
+    .fill.llm { background: var(--llm); }
+    .n { text-align: right; font-variant-numeric: tabular-nums; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-size: 12px; font-weight: 600; background: var(--bg-3); }
+    tr:last-child td { border-bottom: 0; }
+    tr.win-g td:first-child { box-shadow: inset 3px 0 0 var(--graph); }
+    tr.win-k td:first-child { box-shadow: inset 3px 0 0 var(--kb); }
+    tr.win-w td:first-child { box-shadow: inset 3px 0 0 var(--wiki); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .window {
+      height: 14px;
+      background: var(--bg-3);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .window > i { display: block; height: 100%; }
+    .note { color: var(--dim); font-size: 12px; margin-top: 10px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 960px) {
+      .app { display: block; }
+      nav { position: relative; height: auto; width: auto; }
+      .kpis, .pick, .grid-2 { grid-template-columns: 1fr; }
+      main { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav>
+      <h1>Retrieval kit</h1>
+      <a href="#pick">Install picker</a>
+      <a href="#score">Accuracy</a>
+      <a href="#cost">Tokens and speed</a>
+      <a href="#window">Context window</a>
+      <a href="#harbor">Harborline</a>
+      <a href="#k8s">kubernetes/community</a>
+      <a href="#hood">Under the hood</a>
+    </nav>
+    <main>
+      <h2>graph-memory vs fde-kb vs llm-wiki</h2>
+      <p class="sub">
+        28 scored questions, two corpora. Retrieval CLIs do not call a model.
+        Tokens are ceil(chars/4) of the text the agent pastes into the next turn.
+        Window share uses 128,000 (common agent cap). gpt-4.1 input is 1,047,576.
+        22 Aug 2026.
+      </p>
+
+      <div class="kpis">
+        <div class="card">
+          <div class="label">graph-memory · both runs</div>
+          <div class="value graph">24/28</div>
+        </div>
+        <div class="card">
+          <div class="label">wiki-from-extracts · both runs</div>
+          <div class="value wiki">24/28</div>
+        </div>
+        <div class="card">
+          <div class="label">fde-kb · both runs</div>
+          <div class="value kb">18/28</div>
+        </div>
+        <div class="card">
+          <div class="label">llm-wiki ingest · Harborline only</div>
+          <div class="value llm">12/14</div>
+        </div>
+      </div>
+
+      <h3 id="pick">Install one skill, or several</h3>
+      <p class="sub">Each folder is self-contained. Copy only what you want into <span class="mono">.poolside/skills/</span>.</p>
+      <div class="pick">
+        <div class="card">
+          <div class="swatch"><i class="dot kb"></i> fde-kb</div>
+          <p>Pull search over notes as they are. Index once. Query pastes chunks. No LLM in the indexer.</p>
+          <p class="mono">python scripts/link-skills.py --skills fde-kb</p>
+        </div>
+        <div class="card">
+          <div class="swatch"><i class="dot graph"></i> graph-memory</div>
+          <p>Push recall over typed triples. Build from extraction JSON. Query walks hops. No LLM in the walker.</p>
+          <p class="mono">python scripts/link-skills.py --skills graph-memory</p>
+        </div>
+        <div class="card">
+          <div class="swatch"><i class="dot llm"></i> llm-wiki</div>
+          <p>Compiled markdown wiki. Agent ingest. CLI query and lint. Optional compile-extracts, no model.</p>
+          <p class="mono">python scripts/link-skills.py --skills llm-wiki</p>
+        </div>
+      </div>
+      <p class="note">List all: <span class="mono">python scripts/link-skills.py --list</span>. Combine: <span class="mono">--skills fde-kb,graph-memory</span>.</p>
+
+      <h3 id="score">Accuracy · answers found / 14</h3>
+      <div class="legend">
+        <span class="swatch"><i class="dot graph"></i> graph-memory</span>
+        <span class="swatch"><i class="dot wiki"></i> wiki-from-extracts</span>
+        <span class="swatch"><i class="dot kb"></i> fde-kb</span>
+        <span class="swatch"><i class="dot llm"></i> llm-wiki (Harborline ingest)</span>
+      </div>
+      <div class="card">
+        <div class="bars">
+          <div class="bar-row"><span class="name">Harborline · graph-memory</span><div class="track"><div class="fill graph" style="width:78.6%"></div></div><span class="n">11</span></div>
+          <div class="bar-row"><span class="name">Harborline · wiki-from-extracts</span><div class="track"><div class="fill wiki" style="width:78.6%"></div></div><span class="n">11</span></div>
+          <div class="bar-row"><span class="name">Harborline · fde-kb</span><div class="track"><div class="fill kb" style="width:78.6%"></div></div><span class="n">11</span></div>
+          <div class="bar-row"><span class="name">Harborline · llm-wiki</span><div class="track"><div class="fill llm" style="width:85.7%"></div></div><span class="n">12</span></div>
+          <div class="bar-row"><span class="name">k8s · graph-memory</span><div class="track"><div class="fill graph" style="width:92.9%"></div></div><span class="n">13</span></div>
+          <div class="bar-row"><span class="name">k8s · wiki-from-extracts</span><div class="track"><div class="fill wiki" style="width:92.9%"></div></div><span class="n">13</span></div>
+          <div class="bar-row"><span class="name">k8s · fde-kb</span><div class="track"><div class="fill kb" style="width:50%"></div></div><span class="n">7</span></div>
+        </div>
+        <p class="note">Scale: 14 questions. llm-wiki was not ingested on kubernetes/community (2.9M raw tokens).</p>
+      </div>
+
+      <h3 id="cost">Tokens pasted into the model, and retrieval speed</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th>What is pasted</th>
+            <th>Harborline tok</th>
+            <th>of 128k</th>
+            <th>k8s tok</th>
+            <th>of 128k</th>
+            <th>Harborline ms</th>
+            <th>k8s ms</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">graph-memory</td>
+            <td>recall stdout: up to 8 triples + where notes</td>
+            <td>126</td><td>0.10%</td><td>238</td><td>0.19%</td><td>0.6</td><td>1.9</td>
+          </tr>
+          <tr>
+            <td class="mono">fde-kb</td>
+            <td>search stdout: 8 hybrid chunks (max 2000 chars)</td>
+            <td>641</td><td>0.50%</td><td>1813 (max 3309)</td><td>1.42%</td><td>1.8</td><td>27.7</td>
+          </tr>
+          <tr>
+            <td class="mono">wiki-from-extracts</td>
+            <td>4 pages projected from the same graph JSON</td>
+            <td>136</td><td>0.11%</td><td>314</td><td>0.25%</td><td>0.2</td><td>1.8</td>
+          </tr>
+          <tr>
+            <td class="mono">llm-wiki query</td>
+            <td>lexical top 4 compiled pages (index not pasted)</td>
+            <td>365</td><td>0.29%</td><td>not run</td><td>n/a</td><td>0.3</td><td>n/a</td>
+          </tr>
+          <tr>
+            <td class="mono">llm-wiki ingest</td>
+            <td>one-shot: all raw notes + the wiki being written</td>
+            <td>4635 in / 2327 out</td><td>3.62%</td><td>2.9M to read the repo</td><td>23× 128k</td><td>one agent pass</td><td>not run</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">graph-memory and fde-kb spend zero model tokens to retrieve. You only pay for the stdout the agent pastes. llm-wiki pays on ingest, then a small query paste.</p>
+
+      <h3 id="window">Share of a 128k context window (Harborline query)</h3>
+      <div class="grid-2">
+        <div class="card">
+          <div class="label">graph-memory · 126 tok · 0.10%</div>
+          <div class="window"><i style="width:0.10%;background:var(--graph)"></i></div>
+        </div>
+        <div class="card">
+          <div class="label">fde-kb · 641 tok · 0.50%</div>
+          <div class="window"><i style="width:0.50%;background:var(--kb)"></i></div>
+        </div>
+        <div class="card">
+          <div class="label">llm-wiki query · 365 tok · 0.29%</div>
+          <div class="window"><i style="width:0.29%;background:var(--wiki)"></i></div>
+        </div>
+        <div class="card">
+          <div class="label">llm-wiki ingest · 4635 tok · 3.62%</div>
+          <div class="window"><i style="width:3.62%;background:var(--llm)"></i></div>
+        </div>
+      </div>
+      <p class="note">Bars are to scale against 128,000. Query slivers are almost invisible on purpose. kubernetes/community raw markdown is 2,901,864 tokens: 23 full 128k windows, or 277% of gpt-4.1.</p>
+
+      <h3 id="harbor">Harborline · 37 notes · every question</h3>
+      <table>
+        <thead>
+          <tr><th></th><th>Question</th><th>graph-memory</th><th>llm-wiki</th><th>fde-kb</th><th>Takes it</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Q1</td><td>£12,000 credit in August</td><td>Tomasz Krol</td><td>missed: page said [[tomasz-krol]]</td><td>Tomasz in meeting notes</td><td>graph-memory + fde-kb</td></tr>
+          <tr><td>Q2</td><td>Vendor over £50,000</td><td>Robin Adeyemi</td><td>Robin Adeyemi</td><td>Robin + old policy</td><td>all three</td></tr>
+          <tr><td>Q5</td><td>Who is the FD?</td><td>Nora Hale</td><td>Nora Hale</td><td>picnic notes</td><td>graph-memory + llm-wiki</td></tr>
+          <tr class="win-k"><td>Q6</td><td>Tone of emails</td><td>nothing</td><td>plain words, no canned openers</td><td>brand-voice</td><td>llm-wiki + fde-kb</td></tr>
+          <tr class="win-k"><td>Q7</td><td>Mileage</td><td>nothing</td><td>45p</td><td>45p</td><td>llm-wiki + fde-kb</td></tr>
+          <tr class="win-k"><td>Q8</td><td>Laptop requests</td><td>nothing</td><td>#it-help</td><td>#it-help</td><td>llm-wiki + fde-kb</td></tr>
+          <tr class="win-g"><td>Q9</td><td>Boss is away</td><td>no matches</td><td>opened aliases page</td><td>coffee rota</td><td>graph-memory (silent)</td></tr>
+          <tr class="win-g"><td>Q11</td><td>Support lead</td><td>Jules Okonkwo</td><td>Jules Okonkwo</td><td>birthday list</td><td>graph-memory + llm-wiki</td></tr>
+        </tbody>
+      </table>
+      <p class="note">llm-wiki ingest was this coding agent reading all 37 notes (no OPENAI_API_KEY in repo .env). Wiki-from-extracts (script pages from the same 7 JSON files as graph-memory) tied graph-memory 11/14.</p>
+
+      <h3 id="k8s">kubernetes/community · 832 notes · 5,728 chunks</h3>
+      <table>
+        <thead>
+          <tr><th></th><th>Question</th><th>graph-memory / wiki-from-extracts</th><th>fde-kb</th></tr>
+        </thead>
+        <tbody>
+          <tr class="win-g"><td>K2</td><td>Who chairs SIG Network?</td><td>Bowei Du and co-chairs</td><td>right folder, names missing from chunks</td></tr>
+          <tr class="win-g"><td>K5</td><td>Become an org member</td><td>2FA + two sponsors</td><td>summit registration page</td></tr>
+          <tr class="win-k"><td>K9</td><td>Contributor guide URL</td><td>nothing (never compiled)</td><td>kubernetes.dev/docs/guide</td></tr>
+          <tr class="win-g"><td>K12</td><td>£800 refund (wrong universe)</td><td>no matches</td><td>2018 summit retro</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="hood">Under the hood</h3>
+      <div class="grid-2">
+        <div class="card">
+          <div class="label">fde-kb</div>
+          <p>Once: <span class="mono">index</span> chunks the vault into SQLite (FTS always, vectors optional). Each question: <span class="mono">search</span> returns chunks. No LLM.</p>
+        </div>
+        <div class="card">
+          <div class="label">graph-memory</div>
+          <p>Once: extract JSON, then <span class="mono">build</span> writes graph.db. Each question: <span class="mono">recall</span> seeds names and walks hops. No LLM.</p>
+        </div>
+        <div class="card">
+          <div class="label">llm-wiki</div>
+          <p>Each new source: the agent writes wiki pages (this is the token cost). Each question: <span class="mono">query</span> returns top pages. <span class="mono">lint</span> is structural. <span class="mono">compile-extracts</span> can skip the LLM write if you already have graph JSON.</p>
+        </div>
+        <div class="card">
+          <div class="label">How we use them</div>
+          <p>graph-memory first for who / whose seat / who covers. If it is empty, fde-kb. llm-wiki if you want browsable pages and accept ingest cost. Write full names on pages. Slugs hide answers.</p>
+        </div>
+      </div>
+      <p class="note">Index build: Harborline 23 ms, k8s 7.0 s. Graph build: 6 ms and 7.5 ms. This file is static HTML. Open it locally; no network.</p>
+    </main>
+  </div>
+</body>
+</html>

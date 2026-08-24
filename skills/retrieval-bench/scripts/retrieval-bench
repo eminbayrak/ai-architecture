@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Retrieval bench CLI. Stdlib only. No package index. No model calls.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY="${SCRIPT_DIR}/retrieval_bench.py"
+
+if [ -n "${RETRIEVAL_BENCH_PYTHON:-}" ]; then
+  exec "${RETRIEVAL_BENCH_PYTHON}" "${PY}" "$@"
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "${PY}" "$@"
+fi
+
+if command -v python >/dev/null 2>&1; then
+  exec python "${PY}" "$@"
+fi
+
+echo "retrieval-bench: need Python 3.12+ on PATH" >&2
+exit 1

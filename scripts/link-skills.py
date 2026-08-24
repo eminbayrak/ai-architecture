@@ -23,7 +23,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-HARNESS_SKILLS = ("fde-kb", "jira")
+# Default install set. Each folder under skills/ is self-contained; pick with --skills.
+HARNESS_SKILLS = ("fde-kb", "jira", "graph-memory", "llm-wiki", "retrieval-bench")
+
+SKILL_CATALOG = (
+    ("fde-kb", "Hybrid search over an Obsidian vault (pull RAG). No LLM in the indexer."),
+    ("graph-memory", "Typed triples, SQLite walk (push recall). No LLM in the walker."),
+    ("llm-wiki", "Compiled markdown wiki. Agent ingest; CLI query and lint."),
+    ("retrieval-bench", "One-command HTML bench of retrieval skills against a repo or vault. No model API; harness agent does llm-wiki ingest."),
+    ("jira", "Jira Data Center REST via a local Bearer PAT."),
+)
 
 
 def repo_root() -> Path:
@@ -88,9 +97,30 @@ def link_one(src: Path, dest: Path) -> str:
     return "linked"
 
 
-def link_harness(root: Path) -> list[tuple[str, str]]:
+def available_names() -> tuple[str, ...]:
+    return tuple(name for name, _desc in SKILL_CATALOG)
+
+
+def parse_skill_list(raw: str | None) -> tuple[str, ...]:
+    if raw is None or raw.strip() == "" or raw.strip() == "all":
+        return HARNESS_SKILLS
+    names = tuple(part.strip() for part in raw.split(",") if part.strip())
+    known = set(available_names())
+    unknown = [n for n in names if n not in known]
+    if unknown:
+        raise SystemExit(
+            "unknown skill(s): "
+            + ", ".join(unknown)
+            + ". Known: "
+            + ", ".join(available_names())
+        )
+    return names
+
+
+def link_harness(root: Path, names: tuple[str, ...] | None = None) -> list[tuple[str, str]]:
+    selected = names if names is not None else HARNESS_SKILLS
     results: list[tuple[str, str]] = []
-    for name in HARNESS_SKILLS:
+    for name in selected:
         src = root / "skills" / name
         dest = root / ".poolside" / "skills" / name
         results.append((name, link_one(src, dest)))
@@ -98,11 +128,27 @@ def link_harness(root: Path) -> list[tuple[str, str]]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Link skills/ into .poolside/skills/")
+    parser = argparse.ArgumentParser(
+        description="Link selected skills/ folders into .poolside/skills/"
+    )
     parser.add_argument("--root", type=Path, default=None)
+    parser.add_argument(
+        "--skills",
+        help="comma-separated skill ids, or 'all' (default: all harness skills)",
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="print installable skills and exit",
+    )
     args = parser.parse_args(argv)
+    if args.list:
+        for name, desc in SKILL_CATALOG:
+            print(f"{name:16} {desc}")
+        return 0
     root = (args.root or repo_root()).resolve()
-    for name, status in link_harness(root):
+    selected = parse_skill_list(args.skills)
+    for name, status in link_harness(root, selected):
         print(f"{name}: {status}")
     return 0
 

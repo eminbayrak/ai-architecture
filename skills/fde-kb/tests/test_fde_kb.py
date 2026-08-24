@@ -1000,3 +1000,52 @@ def test_bash_launcher_missing_uv_index_is_one_line(tmp_path: Path):
     assert "FDE_KB_UV_INDEX" in err
     lines = [ln for ln in err.splitlines() if ln.strip()]
     assert len(lines) == 1, err
+
+
+def test_coverage_separates_a_real_hit_from_a_keyword_collision(tmp_path):
+    """`score` is rank-derived and identical for any top hit; coverage is not.
+
+    Without this signal an agent cannot tell "the vault answers this" from
+    "the vault happened to share two common words with the question".
+    """
+    fde_kb = load_fde_kb()
+    vault = tmp_path / "vault"
+    (vault / "playbooks").mkdir(parents=True)
+    (vault / "playbooks" / "refunds.md").write_text(
+        "---\ntitle: Refunds\ntype: playbook\ntags: [playbook]\n---\n\n"
+        "# Refunds\n\nAny refund over 500 must be signed off by the Operations Manager.\n",
+        encoding="utf-8",
+    )
+    (vault / "playbooks" / "rota.md").write_text(
+        "---\ntitle: Rota\ntype: playbook\ntags: [playbook]\n---\n\n"
+        "# Rota\n\nBook leave in the shared calendar when you are away.\n",
+        encoding="utf-8",
+    )
+    conn = fde_kb.connect(tmp_path / "index.sqlite")
+    fde_kb.init_schema(conn)
+    fde_kb.index_vault(conn, vault, None)
+
+    strong_warnings: list[str] = []
+    strong = fde_kb.search(
+        conn,
+        "Who signs off a refund over 500?",
+        None,
+        mode="lexical",
+        warnings=strong_warnings,
+    )
+    weak_warnings: list[str] = []
+    weak = fde_kb.search(
+        conn,
+        "Who is in charge when the boss is away?",
+        None,
+        mode="lexical",
+        warnings=weak_warnings,
+    )
+    conn.close()
+
+    assert strong[0]["coverage"] >= fde_kb.WEAK_COVERAGE
+    assert fde_kb.WEAK_MATCH_HINT not in strong_warnings
+    # The trap question still returns rows, but is flagged as a weak match.
+    assert weak
+    assert max(h["coverage"] for h in weak) < fde_kb.WEAK_COVERAGE
+    assert fde_kb.WEAK_MATCH_HINT in weak_warnings

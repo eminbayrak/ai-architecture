@@ -120,7 +120,8 @@ The `mode` field in the response is what actually ran, not what was asked for. R
 
 1. If `warnings` is non-empty, surface them to the user first (degraded lexical-only results are not the same as hybrid).
 2. If `results` is empty, say the KB has nothing on this. Do not invent a playbook.
-3. Otherwise answer from the hits and cite `path` (and heading). Then stop unless the user asked to write.
+3. Check `coverage` before you trust a hit. `score` is derived from rank alone, so the top hit always scores about the same whether it is the answer or a keyword collision. `coverage` is the fraction of the question's content words the chunk actually contains. Below ~0.34 the search also emits a weak-match warning; when that fires, say the KB has nothing solid rather than answering from the hits.
+4. Otherwise answer from the hits and cite `path` (and heading). Then stop unless the user asked to write.
 
 `ingest --type` is one of `playbook`, `engagement`, `eval`. Writes prefer the official `obsidian` CLI. If the CLI is off (common on Windows: Obsidian.exe is a GUI app), `ingest` / `append` / `get` use vault files on disk, then reindex. A colliding ingest title writes a suffixed path; it never reports success after writing nothing.
 

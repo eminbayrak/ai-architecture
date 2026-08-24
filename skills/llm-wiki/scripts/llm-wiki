@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# llm-wiki CLI. Stdlib only. No package index. No model calls.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY="${SCRIPT_DIR}/llm_wiki.py"
+
+if [ -n "${LLM_WIKI_PYTHON:-}" ]; then
+  exec "${LLM_WIKI_PYTHON}" "${PY}" "$@"
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "${PY}" "$@"
+fi
+
+if command -v python >/dev/null 2>&1; then
+  exec python "${PY}" "$@"
+fi
+
+echo "llm-wiki: need Python 3.12+ on PATH" >&2
+exit 1

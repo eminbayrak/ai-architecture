@@ -25,7 +25,7 @@ packages = ["agents"]
 dev = ["pytest>=8", "sqlite-vec", "model2vec"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "skills/fde-kb/tests", "skills/jira/tests"]
+testpaths = ["tests", "skills/fde-kb/tests", "skills/jira/tests", "skills/graph-memory/tests", "skills/llm-wiki/tests", "skills/retrieval-bench/tests"]
 markers = [
   "model2vec: live Model2Vec (needs local weights or FDE_KB_LIVE_EMBED=1)",
 ]

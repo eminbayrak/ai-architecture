@@ -8,6 +8,8 @@ This is the same pattern used in many local Obsidian retrievers: chunk on headin
 
 **Copy-over:** this entire `fde-kb/` folder is self-contained. Place it at `.poolside/skills/fde-kb`. You do not need the rest of a parent kit.
 
+Sibling skills (optional, separate installs): `graph-memory` for typed hops, `llm-wiki` for a compiled page wiki. Shipped demo: open `docs/retrieval-benchmark.html` at the repo root. Against another repo: `py -3 scripts/retrieval-bench.py --repo PATH`.
+
 ## Quick setup
 
 Needs Python 3.12+ and `uv` on PATH. On Windows, `fde-kb.cmd` uses PowerShell to launch `uv`.

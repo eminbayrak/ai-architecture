@@ -42,3 +42,6 @@ skills/fde-kb/assets/models/**/*.bin
 skills/fde-kb/assets/models/**/*.pt
 skills/fde-kb/assets/models/**/*.pth
 
+
+# Local meeting transcripts, never commit
+docs/meetings/

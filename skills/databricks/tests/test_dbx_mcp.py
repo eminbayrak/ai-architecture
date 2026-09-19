@@ -127,3 +127,61 @@ def test_registration_paths_resolve_in_repo_layout(tmp_path):
     for e in yaml.safe_load((skill / "mcp_tools.databricks.yaml").read_text(encoding="utf-8")):
         # The server joins config_dir / script, the same as here.
         assert (tmp_path / "mcp" / e["script"]).resolve().is_file(), e["script"]
+
+
+def _register_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("register_mcp", SCRIPT.parent / "register_mcp.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+SERVER_CONFIG = (
+    "# FastMCP Dynamic Tool Configuration\r\n"
+    "name: demo-server\r\n"
+    "tools:\r\n"
+    "  - name: greet\r\n"
+    "    description: \"Say hi\"\r\n"
+    "    script: scripts/greet.py\r\n"
+    "    function_name: main\r\n"
+    "  - name: fde-databricks-sql\r\n"
+    "    description: \"old entry\"\r\n"
+    "    script: old/path.py\r\n"
+    "    function_name: main\r\n"
+    "\r\n"
+    "settings:\r\n"
+    "  log_level: info\r\n"
+)
+
+
+def test_register_inserts_replaces_and_keeps_the_rest(tmp_path):
+    import shutil
+
+    import yaml
+
+    skill = tmp_path / "domains" / "fde" / "skills" / "databricks"
+    shutil.copytree(SCRIPT.parent.parent / "scripts", skill / "scripts")
+    shutil.copy(SCRIPT.parent.parent / "mcp_tools.databricks.yaml", skill)
+    cfg = tmp_path / "mcp" / "mcp_tools.yaml"
+    cfg.parent.mkdir()
+    cfg.write_bytes(SERVER_CONFIG.encode())
+
+    reg = _register_module()
+    reg.SKILL, reg.SNIPPET, reg.ADAPTER = skill, skill / "mcp_tools.databricks.yaml", skill / "scripts" / "dbx_mcp.py"
+    for _ in range(2):  # a second run updates, it does not duplicate
+        names = reg.register(cfg)
+
+    raw = cfg.read_bytes()
+    assert b"\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b"")  # CRLF kept
+    text = raw.decode()
+    assert text.startswith("# FastMCP Dynamic Tool Configuration")  # comment kept
+    data = yaml.safe_load(text)
+    assert data["settings"] == {"log_level": "info"}  # later key kept
+    tools = [t["name"] for t in data["tools"]]
+    assert tools[0] == "greet" and tools.count("fde-databricks-sql") == 1
+    assert set(names) <= set(tools)
+    sql = next(t for t in data["tools"] if t["name"] == "fde-databricks-sql")
+    assert sql["script"] == "../domains/fde/skills/databricks/scripts/dbx_mcp.py"
+    assert (tmp_path / "mcp" / "mcp_tools.yaml.bak").read_bytes() == SERVER_CONFIG.encode()

@@ -246,15 +246,39 @@ def cli_candidates() -> list[str]:
         Path("/usr/local/bin/databricks"),
     ]
     # winget puts new CLIs here. The current process PATH does not see them until a new terminal.
-    local = os.environ.get("LOCALAPPDATA")
-    if local:
-        extra.append(Path(local) / "Microsoft" / "WinGet" / "Links" / "databricks.exe")
-    program_files = os.environ.get("ProgramFiles")
-    if program_files:
-        extra.append(Path(program_files) / "WinGet" / "Links" / "databricks.exe")
+    # With symlinks off, winget skips Links and adds the package folder to the user PATH instead.
+    winget_dirs = []
+    if os.environ.get("LOCALAPPDATA"):
+        winget_dirs.append(Path(os.environ["LOCALAPPDATA"]) / "Microsoft" / "WinGet")  # user scope
+    if os.environ.get("ProgramFiles"):
+        winget_dirs.append(Path(os.environ["ProgramFiles"]) / "WinGet")  # machine scope
+    for winget in winget_dirs:
+        extra.append(winget / "Links" / "databricks.exe")
+        extra += sorted((winget / "Packages").glob("Databricks.DatabricksCLI*/databricks.exe"))
+    extra += [Path(d) / "databricks.exe" for d in saved_windows_path()]
     found += [str(p) for p in extra if p.is_file()]
     seen: set[str] = set()
     return [p for p in found if not (p in seen or seen.add(p))]
+
+
+def saved_windows_path() -> list[str]:
+    """User and system PATH as saved in the registry. An install updates these, not this process."""
+    if platform.system() != "Windows":
+        return []
+    import winreg
+
+    dirs: list[str] = []
+    for hive, key in (
+        (winreg.HKEY_CURRENT_USER, "Environment"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+    ):
+        try:
+            with winreg.OpenKey(hive, key) as k:
+                value, _ = winreg.QueryValueEx(k, "Path")
+        except OSError:
+            continue
+        dirs += [os.path.expandvars(d) for d in value.split(";") if d.strip()]
+    return dirs
 
 
 def cli_version(path: str) -> tuple[int, ...] | None:
@@ -583,7 +607,8 @@ def cmd_doctor(a: argparse.Namespace) -> int:
                 f"{fmt_version(MIN_CLI)}+. See the installer output above. If IT blocks it, ask them to "
                 "install 'Databricks CLI'."
             )
-    print(f"CLI: {fmt_version(found[1])} at {found[0]}")
+    # Hosts, IDs and paths stay out by default: a tool result can end up in a chat.
+    print(f"CLI: {fmt_version(found[1])}" + (f" at {found[0]}" if a.details else ""))
 
     names = profile_names(read_config())
     if not names:
@@ -596,10 +621,14 @@ def cmd_doctor(a: argparse.Namespace) -> int:
     print("Workspaces:")
     for p in listing.get("profiles", []):
         comp = configured_compute(p["name"])
-        comp_txt = f"{comp[0]} {comp[1]}" if comp else "auto (default SQL warehouse)"
+        if comp:
+            comp_txt = f"{comp[0]} {comp[1]}" if a.details else comp[0]
+        else:
+            comp_txt = "auto (default SQL warehouse)"
         ok = "OK" if p.get("valid") else "NOT LOGGED IN"
         bad += 0 if p.get("valid") else 1
-        print(f"  {p['name']:<16} {ok:<14} {p.get('host', '')}  compute: {comp_txt}")
+        host = f"  {p.get('host', '')}" if a.details else ""
+        print(f"  {p['name']:<16} {ok:<14}{host}  compute: {comp_txt}")
     if bad:
         print("Next: for each NOT LOGGED IN workspace, run: dbx login <name>")
     return 1 if bad else 0
@@ -729,6 +758,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("doctor", help="Check the CLI and every workspace login.")
     p.add_argument("--fix", action="store_true", help="Install or upgrade the Databricks CLI.")
+    p.add_argument("--details", action="store_true", help="Also show hosts, compute IDs and the CLI path.")
     p.set_defaults(fn=cmd_doctor)
 
     p = sub.add_parser("login", help="Sign in to a workspace in the browser (OAuth).")

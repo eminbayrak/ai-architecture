@@ -103,6 +103,7 @@ Show the error text to the user and stop. Do not retry in a loop.
 ## Never
 
 - Ask the user to paste a token or password into chat, or print one.
+- Show workspace hosts, workspace IDs, cluster IDs or local paths unless the user asks. `dbx doctor --details` prints them for a person at a terminal.
 - Run `databricks` commands that change anything: jobs, clusters (except the automatic start above), permissions, tables, files.
 - Write data, even when the user asks. Tell them this skill is read-only.
 - Run `--debug`. It prints auth headers.

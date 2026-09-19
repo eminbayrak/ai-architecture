@@ -302,11 +302,30 @@ def test_e2e_saved_compute_overrides_profile(workspace):
     assert body["warehouse_id"] == "w7"
 
 
-def test_e2e_doctor_lists_workspaces(workspace):
+def test_e2e_doctor_hides_hosts_and_ids_by_default(workspace):
     r = run(workspace, "doctor")
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "wh" in r.stdout and "warehouse w1" in r.stdout
-    assert "cluster 0101-000000-abcd" in r.stdout
+    assert "wh" in r.stdout and "compute: warehouse" in r.stdout and "compute: cluster" in r.stdout
+    assert "127.0.0.1" not in r.stdout and "0101-000000-abcd" not in r.stdout and " at " not in r.stdout
+
+
+def test_e2e_doctor_details_shows_hosts_and_ids(workspace):
+    r = run(workspace, "doctor", "--details")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "127.0.0.1" in r.stdout and "warehouse w1" in r.stdout and "cluster 0101-000000-abcd" in r.stdout
+
+
+def test_cli_found_in_winget_packages_folder(tmp_path, monkeypatch):
+    # With symlinks off, winget installs here and only updates the PATH saved in the registry.
+    pkg = tmp_path / "Microsoft" / "WinGet" / "Packages" / "Databricks.DatabricksCLI_Microsoft.Winget.Source_x"
+    pkg.mkdir(parents=True)
+    exe = pkg / "databricks.exe"
+    exe.write_text("#!/bin/sh\necho 'Databricks CLI v9.9.9'\n")
+    exe.chmod(0o755)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.delenv("DATABRICKS_CLI", raising=False)
+    assert str(exe) in dbx.cli_candidates()
+    assert dbx.cli_version(str(exe)) == (9, 9, 9)
 
 
 def test_e2e_doctor_with_no_workspaces_tells_agent_to_ask(workspace, tmp_path):

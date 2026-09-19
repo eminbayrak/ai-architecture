@@ -67,7 +67,6 @@ The `script:` paths are relative to the folder of `mcp_tools.yaml`. Change them 
 ## Files
 
 - `HOWTO.md`: guide for the person who uses the skill, with diagrams.
-
 - `SKILL.md`: instructions for the agent.
 - `scripts/dbx`, `scripts/dbx.cmd`: launchers that find Python 3.
 - `scripts/dbx.py`: the implementation.

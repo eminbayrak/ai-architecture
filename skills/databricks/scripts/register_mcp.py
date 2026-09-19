@@ -79,7 +79,10 @@ def remove_entries(lines: list[str], start: int, end: int, indent: int, names: s
 def register(config: Path, remove: tuple[str, ...] = ()) -> list[str]:
     text = config.read_bytes().decode("utf-8")  # read_text() would turn CRLF into LF
     newline = "\r\n" if "\r\n" in text else "\n"
-    lines = text.splitlines()
+    # Keep each line's own ending, so a file with mixed endings changes only where we edit it.
+    lines = text.splitlines(keepends=True)
+    if lines and not lines[-1].endswith(("\n", "\r")):
+        lines[-1] += newline
     script = Path(os.path.relpath(ADAPTER, config.resolve().parent)).as_posix()
     blocks = entry_blocks(SNIPPET.read_text(encoding="utf-8"))
     names = {n for n, _ in blocks}
@@ -92,9 +95,9 @@ def register(config: Path, remove: tuple[str, ...] = ()) -> list[str]:
     for _, block in blocks:
         for ln in block:
             ln = re.sub(r"^(\s*script:\s*).*$", lambda m: m.group(1) + script, ln)
-            new.append(" " * indent + ln)
+            new.append(" " * indent + ln + newline)
     lines[end:end] = new
-    result = newline.join(lines) + newline
+    result = "".join(lines)
 
     data = yaml.safe_load(result)
     got = {t["name"]: t for t in data.get("tools", [])}

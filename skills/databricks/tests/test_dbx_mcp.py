@@ -185,3 +185,22 @@ def test_register_inserts_replaces_and_keeps_the_rest(tmp_path):
     sql = next(t for t in data["tools"] if t["name"] == "fde-databricks-sql")
     assert sql["script"] == "../domains/fde/skills/databricks/scripts/dbx_mcp.py"
     assert (tmp_path / "mcp" / "mcp_tools.yaml.bak").read_bytes() == SERVER_CONFIG.encode()
+
+
+def test_register_leaves_other_lines_byte_for_byte(tmp_path):
+    import shutil
+
+    skill = tmp_path / "domains" / "fde" / "skills" / "databricks"
+    shutil.copytree(SCRIPT.parent.parent / "scripts", skill / "scripts")
+    shutil.copy(SCRIPT.parent.parent / "mcp_tools.databricks.yaml", skill)
+    cfg = tmp_path / "mcp" / "mcp_tools.yaml"
+    cfg.parent.mkdir()
+    # Mixed endings, as a file edited on both Windows and macOS ends up.
+    before = b"name: demo\ntools:\r\n  - name: greet\n    description: \"Say \\\"hi\\\"\"\r\n    script: g.py\n    function_name: main\n"
+    cfg.write_bytes(before)
+
+    reg = _register_module()
+    reg.SKILL, reg.SNIPPET, reg.ADAPTER = skill, skill / "mcp_tools.databricks.yaml", skill / "scripts" / "dbx_mcp.py"
+    reg.register(cfg)
+
+    assert cfg.read_bytes().startswith(before)

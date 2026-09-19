@@ -87,3 +87,9 @@ uv run pytest skills/databricks/tests
 ```
 
 The end-to-end tests skip when the Databricks CLI is not installed.
+
+After an install, `tests/live_mcp_check.py` calls every tool through the real MCP server against a signed-in workspace. It prints PASS or FAIL with counts only:
+
+```powershell
+.venv\Scripts\python.exe knowledge-base\domains\fde\skills\databricks\tests\live_mcp_check.py mcp\server.py mcp\mcp_tools.yaml ws13
+```

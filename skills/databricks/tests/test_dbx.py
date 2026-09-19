@@ -333,7 +333,8 @@ def test_cli_found_in_winget_packages_folder(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     monkeypatch.delenv("DATABRICKS_CLI", raising=False)
     assert str(exe) in dbx.cli_candidates()
-    assert dbx.cli_version(str(exe)) == (9, 9, 9)
+    if os.name != "nt":  # the fake CLI is a shell script, which Windows cannot run as an .exe
+        assert dbx.cli_version(str(exe)) == (9, 9, 9)
 
 
 def test_e2e_doctor_with_no_workspaces_tells_agent_to_ask(workspace, tmp_path):
@@ -391,8 +392,10 @@ def test_windows_cmd_launcher_exit_code():
     assert r.returncode == 2 and "Blocked" in r.stderr
 
 
-def test_cmd_launcher_has_crlf():
-    assert b"\r\n" in (SKILL / "scripts" / "dbx.cmd").read_bytes()
+def test_cmd_launcher_has_crlf_and_no_unix_paths():
+    text = (SKILL / "scripts" / "dbx.cmd").read_bytes()
+    assert b"\r\n" in text
+    assert b"/dev/null" not in text  # cmd.exe cannot open it, so the Python check always fails
 
 
 @pytest.mark.skipif(not shutil.which("sh"), reason="needs sh")

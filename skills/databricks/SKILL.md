@@ -1,6 +1,6 @@
 ---
 name: databricks
-description: Read data from Databricks. Run read-only SQL, look up catalogs, schemas, tables and columns, query metric views, or ask Genie a plain-English data question. Use when the user mentions Databricks, a workspace (ws11, ws13, ...), a catalog.schema.table name, a SQL warehouse, a metric view, Genie, or asks a question about company data in Databricks. Also sets up the Databricks CLI and workspace login on first use.
+description: Read data from Databricks. Run read-only SQL, look up catalogs, schemas, tables and columns, and query metric views. Use when the user mentions Databricks, a workspace (ws11, ws13, ...), a catalog.schema.table name, a SQL warehouse or cluster, a metric view, or asks a question about company data in Databricks. Also sets up the Databricks CLI and workspace login on first use.
 ---
 
 # Databricks (read-only)
@@ -15,7 +15,6 @@ If the `fde-databricks-*` MCP tools are available, use them, not the launcher. T
 | `dbx login <url> --name <n>` | `fde-databricks-login`. It returns at once. Ask the user to finish sign-in in the browser, then call `fde-databricks-setup`. |
 | `dbx sql -p <ws> "..." --param k=v` | `fde-databricks-sql` with `query`, `workspace`, `params: {"k": "v"}` |
 | `dbx schema -p <ws> <tables>` | `fde-databricks-schema` |
-| `dbx ask -p <ws> "..."` | `fde-databricks-ask` |
 | `dbx compute -p <ws>` | `fde-databricks-compute` |
 
 With MCP tools, pass SQL as text in `query`. The `--file` rule for Windows below applies only to the launcher.
@@ -54,14 +53,14 @@ Pass `-p <name>` on every command. If the user did not say which workspace, and 
 
 | The user wants | Run |
 |---|---|
-| A plain-English answer ("revenue by region last quarter", "where is the claims data?") | `dbx ask -p ws13 -s <topic> "<question>"` |
+| A plain-English question ("how many parts do we have?") | Find the table with `SHOW TABLES` and `schema`, then write the SQL yourself |
 | A business metric that has a metric view | `dbx sql -p ws13 "SELECT region, MEASURE(\`Total Revenue\`) FROM cat.sch.sales_mv GROUP BY region"` |
 | An exact query, or you know the tables | `dbx sql -p ws13 "<SELECT ...>"` |
 | What catalogs / schemas / tables exist | `dbx sql -p ws13 "SHOW CATALOGS"`, `"SHOW SCHEMAS IN cat"`, `"SHOW TABLES IN cat.sch"` |
 | Columns and types | `dbx schema -p ws13 cat.sch.table` |
 | Metric views in a schema | `dbx sql -p ws13 "SHOW VIEWS IN cat.sch"`, then `DESCRIBE TABLE EXTENDED` on one of them |
 
-- **Genie (`ask`):** Do not put double quotes inside the question. Reuse the same `-s` label for follow-up questions. Genie prints the SQL it ran. Show that SQL to the user with the answer. If Genie is not turned on for the workspace, or `ask` times out, write the SQL yourself with `sql`. On some workspaces the SQL warehouse API never answers, and Genie needs it.
+- **Plain-English questions:** Look for the table first (`SHOW CATALOGS`, `SHOW SCHEMAS IN cat`, `SHOW TABLES IN cat.sch`), then check its columns. Show the user the SQL you ran with the answer. Do not use Genie. It is not enabled.
 - **Metric views:** Wrap every measure in `MEASURE()`. `SELECT *` does not work on a metric view.
 - **Your own SQL:** Look at the columns with `schema` first. Do not guess column names.
 

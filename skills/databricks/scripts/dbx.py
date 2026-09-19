@@ -30,13 +30,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-MIN_CLI = (1, 9, 0)  # `genie ask` and `experimental aitools tools query`
+MIN_CLI = (1, 9, 0)  # `experimental aitools tools query`
 DEFAULT_LIMIT = 1000
 CLUSTER_START_TIMEOUT_S = 15 * 60
 COMMAND_TIMEOUT_S = 10 * 60
 # Some workspaces never answer the SQL warehouse API (seen on Azure Government). Fail fast there.
 WAREHOUSE_API_TIMEOUT_S = 30
-ASK_TIMEOUT_S = 5 * 60
 # DBX_POLL_SECONDS exists for tests. Real runs use the defaults.
 POLL_S = float(os.environ.get("DBX_POLL_SECONDS", 3))
 CLUSTER_POLL_S = float(os.environ.get("DBX_POLL_SECONDS", 10))
@@ -761,22 +760,6 @@ def cmd_schema(a: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_ask(a: argparse.Namespace) -> int:
-    profile = resolve_profile(a.profile)
-    args = [require_cli(), "genie", "ask", a.question, "-p", profile, "--include-sql"]
-    if not sys.stdout.isatty():
-        args += ["-o", "json"]  # a tool reads this, not a person
-    if a.session:
-        args += ["-s", a.session]
-    try:
-        return subprocess.run(args, check=False, timeout=ASK_TIMEOUT_S, **NO_STDIN).returncode
-    except subprocess.TimeoutExpired:
-        raise DbxError(
-            f"Genie did not answer in {ASK_TIMEOUT_S // 60} minutes. Genie may be off for '{profile}', "
-            "or its SQL warehouse API does not answer. Use dbx sql instead."
-        ) from None
-
-
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="dbx", description="Read-only Databricks access for coding agents.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -817,11 +800,6 @@ def build_parser() -> argparse.ArgumentParser:
     with_compute(p)
     p.set_defaults(fn=cmd_schema)
 
-    p = sub.add_parser("ask", help="Ask Genie a question in plain English.")
-    p.add_argument("question")
-    p.add_argument("-p", "--profile")
-    p.add_argument("-s", "--session", help="Reuse a label to ask follow-up questions.")
-    p.set_defaults(fn=cmd_ask)
     return ap
 
 

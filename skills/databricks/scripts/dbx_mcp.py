@@ -133,20 +133,6 @@ def databricks_schema(
     return _run(["schema", *tables, *_profile(workspace)])
 
 
-def databricks_ask(
-    question: Annotated[str, Field(description="A plain-English question about the data.")],
-    workspace: Workspace = None,
-    session: Annotated[
-        str | None, Field(description="Reuse the same label to ask follow-up questions in one conversation.")
-    ] = None,
-) -> dict[str, Any]:
-    """Ask Databricks Genie a data question. Genie finds the tables, writes the SQL and answers.
-
-    Show the user the SQL Genie ran. If Genie is not turned on, use databricks_sql instead.
-    """
-    return _run(["ask", *_profile(workspace), *(["-s", session] if session else []), "--", question])
-
-
 def databricks_compute(
     workspace: Workspace = None,
     use: Annotated[

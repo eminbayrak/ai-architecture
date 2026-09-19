@@ -1,14 +1,15 @@
 # Add these entries under `tools:` in the FastMCP server's mcp_tools.yaml.
 # `script` is relative to the folder that holds mcp_tools.yaml. The paths below fit this layout:
 #   <repo>/mcp/mcp_tools.yaml
-#   <repo>/domains/fde/skills/databricks/scripts/dbx_mcp.py
+#   <repo>/knowledge-base/domains/fde/skills/databricks/scripts/dbx_mcp.py
+# register_mcp.py computes the path itself, so the skill can live anywhere.
 # Forward slashes work on Windows and macOS.
 # The server builds each tool's input schema from the Python signature in dbx_mcp.py.
 # The `parameters` blocks match that signature for the server's name check.
 
 - name: fde-databricks-setup
   description: "Databricks setup check - Check the Databricks CLI and every workspace login. Run first on a new machine. fix=true installs or upgrades the CLI."
-  script: ../domains/fde/skills/databricks/scripts/dbx_mcp.py
+  script: ../knowledge-base/domains/fde/skills/databricks/scripts/dbx_mcp.py
   function_name: databricks_setup
   parameters:
     fix:
@@ -18,7 +19,7 @@
 
 - name: fde-databricks-login
   description: "Databricks login - Open the browser so the user signs in to a workspace with company SSO. Returns at once. Call fde-databricks-setup after the user finishes."
-  script: ../domains/fde/skills/databricks/scripts/dbx_mcp.py
+  script: ../knowledge-base/domains/fde/skills/databricks/scripts/dbx_mcp.py
   function_name: databricks_login
   parameters:
     workspace_url:
@@ -32,7 +33,7 @@
 
 - name: fde-databricks-sql
   description: "Databricks SQL (read-only) - Run one SELECT, WITH, VALUES, SHOW, DESCRIBE or EXPLAIN statement and return rows as JSON. Adds LIMIT 1000 when the query has none."
-  script: ../domains/fde/skills/databricks/scripts/dbx_mcp.py
+  script: ../knowledge-base/domains/fde/skills/databricks/scripts/dbx_mcp.py
   function_name: databricks_sql
   parameters:
     query:
@@ -54,7 +55,7 @@
 
 - name: fde-databricks-schema
   description: "Databricks table schema - Columns, types and descriptions for catalog.schema.table names. Use before writing SQL."
-  script: ../domains/fde/skills/databricks/scripts/dbx_mcp.py
+  script: ../knowledge-base/domains/fde/skills/databricks/scripts/dbx_mcp.py
   function_name: databricks_schema
   parameters:
     tables:
@@ -66,27 +67,9 @@
       required: false
       description: "Profile name from .databrickscfg, for example ws13"
 
-- name: fde-databricks-ask
-  description: "Databricks Genie - Ask a plain-English data question. Genie finds the tables, writes the SQL and answers."
-  script: ../domains/fde/skills/databricks/scripts/dbx_mcp.py
-  function_name: databricks_ask
-  parameters:
-    question:
-      type: string
-      required: true
-      description: "A plain-English question about the data"
-    workspace:
-      type: string
-      required: false
-      description: "Profile name from .databrickscfg, for example ws13"
-    session:
-      type: string
-      required: false
-      description: "Reuse the same label for follow-up questions"
-
 - name: fde-databricks-compute
   description: "Databricks compute - List SQL warehouses and clusters for a workspace, or save which one SQL runs on (warehouse:<id> or cluster:<id>)."
-  script: ../domains/fde/skills/databricks/scripts/dbx_mcp.py
+  script: ../knowledge-base/domains/fde/skills/databricks/scripts/dbx_mcp.py
   function_name: databricks_compute
   parameters:
     workspace:

@@ -22,7 +22,6 @@ The CLI stores the login in `~/.databrickscfg` and refreshes it without user act
 | SQL on a SQL warehouse | `databricks experimental aitools tools query` (Statement Execution API) |
 | SQL on an all-purpose cluster | `databricks api` with the Command Execution API 1.2 |
 | Table columns | `databricks experimental aitools tools discover-schema` |
-| Plain-English questions | `databricks genie ask` |
 
 On top of the CLI, `dbx.py` adds a read-only guard, a default row limit, a compute choice for each profile and cluster support.
 
@@ -33,11 +32,18 @@ Why no JDBC: the Databricks JDBC driver is a Java client for the same APIs. It a
 Run from the root of the repo that holds the MCP server (`mcp\mcp_tools.yaml`), in PowerShell:
 
 ```powershell
-New-Item -ItemType Directory -Force domains\fde\skills | Out-Null
 Invoke-WebRequest https://github.com/eminbayrak/ai-architecture/archive/refs/heads/add-databricks-skill.zip -OutFile $env:TEMP\dbxskill.zip -UseBasicParsing
 Expand-Archive $env:TEMP\dbxskill.zip $env:TEMP\dbxskill -Force
-Copy-Item $env:TEMP\dbxskill\ai-architecture-add-databricks-skill\skills\databricks domains\fde\skills -Recurse -Force
-.venv\Scripts\python.exe domains\fde\skills\databricks\scripts\register_mcp.py mcp\mcp_tools.yaml
+Copy-Item $env:TEMP\dbxskill\ai-architecture-add-databricks-skill\skills\databricks knowledge-base\domains\fde\skills -Recurse -Force
+.venv\Scripts\python.exe knowledge-base\domains\fde\skills\databricks\scripts\register_mcp.py mcp\mcp_tools.yaml
+```
+
+If the repo still has the old JDBC Databricks skill, delete its folder before the `Copy-Item` line, and remove its tool entries:
+
+```powershell
+Remove-Item -Recurse -Force knowledge-base\domains\fde\skills\databricks
+# ... Copy-Item as above, then:
+.venv\Scripts\python.exe knowledge-base\domains\fde\skills\databricks\scripts\register_mcp.py mcp\mcp_tools.yaml --remove fde-databricks --remove fde-databricks-query --remove fde-databricks-list --remove fde-databricks-status --remove fde-databricks-export
 ```
 
 Then restart the MCP server (restart Poolside) and ask it to "check my Databricks setup". The first run installs the Databricks CLI if needed and signs you in with SSO.
@@ -48,7 +54,7 @@ Running the same commands again updates the skill. `register_mcp.py` replaces it
 
 For a FastMCP server that loads Python scripts as tools (one function per tool):
 
-1. Copy this folder to `<repo>/domains/fde/skills/databricks/`.
+1. Copy this folder to `<repo>/knowledge-base/domains/fde/skills/databricks/`.
 2. Copy the entries from `mcp_tools.databricks.yaml` under `tools:` in `<repo>/mcp/mcp_tools.yaml`.
 3. Restart the MCP server.
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Add this skill's tools to a FastMCP server's mcp_tools.yaml.
 
-    python register_mcp.py <path/to/mcp_tools.yaml>
+    python register_mcp.py <path/to/mcp_tools.yaml> [--remove NAME ...]
 
 - Inserts the entries from ../mcp_tools.databricks.yaml at the end of the `tools:` list,
   with the list's own indentation. The rest of the file keeps its text and comments.
 - Sets each `script:` to this skill's dbx_mcp.py, relative to the YAML file's folder.
 - Replaces entries with the same names, so a second run updates them.
+- --remove deletes other entries by name, for example the tools of a skill this one replaces.
 - Checks that the result parses and that every script path exists before it writes.
 - Keeps the file from before the first run as mcp_tools.yaml.bak.
 
@@ -75,7 +76,7 @@ def remove_entries(lines: list[str], start: int, end: int, indent: int, names: s
     return out + lines[end:]
 
 
-def register(config: Path) -> list[str]:
+def register(config: Path, remove: tuple[str, ...] = ()) -> list[str]:
     text = config.read_bytes().decode("utf-8")  # read_text() would turn CRLF into LF
     newline = "\r\n" if "\r\n" in text else "\n"
     lines = text.splitlines()
@@ -84,7 +85,7 @@ def register(config: Path) -> list[str]:
     names = {n for n, _ in blocks}
 
     start, end, indent = tools_span(lines)
-    lines = remove_entries(lines, start, end, indent, names)
+    lines = remove_entries(lines, start, end, indent, names | set(remove))
     start, end, indent = tools_span(lines)
 
     new: list[str] = []
@@ -113,9 +114,12 @@ def register(config: Path) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("config", type=Path, help="Path to the server's mcp_tools.yaml")
+    ap.add_argument("--remove", action="append", default=[], metavar="NAME", help="Also delete this tool entry.")
     a = ap.parse_args()
-    names = register(a.config)
+    names = register(a.config, tuple(a.remove))
     print(f"Registered {len(names)} tools in {a.config}: {', '.join(names)}")
+    if a.remove:
+        print(f"Removed: {', '.join(a.remove)}")
     print("Restart the MCP server to load them.")
     return 0
 

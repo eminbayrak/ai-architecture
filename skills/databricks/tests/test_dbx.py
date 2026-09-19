@@ -426,17 +426,6 @@ def test_compute_lists_clusters_when_warehouse_api_hangs(workspace, monkeypatch,
     assert "did not answer" in out and "cluster:0101-000000-abcd" in out
 
 
-def test_ask_times_out_with_a_clear_message(tmp_path, monkeypatch):
-    slow = tmp_path / "databricks"
-    slow.write_text("#!/bin/sh\nsleep 5\n")
-    slow.chmod(0o755)
-    monkeypatch.setattr(dbx, "require_cli", lambda: str(slow))
-    monkeypatch.setattr(dbx, "resolve_profile", lambda name: "ws1")
-    monkeypatch.setattr(dbx, "ASK_TIMEOUT_S", 1)
-    with pytest.raises(dbx.DbxError, match="Genie did not answer"):
-        dbx.cmd_ask(argparse.Namespace(profile=None, question="q", session=None))
-
-
 def test_timeout_message_hides_the_cli_path(monkeypatch, capsys):
     def boom(a):
         raise subprocess.TimeoutExpired([r"C:\Users\someone\AppData\databricks.exe", "warehouses", "list"], 120)

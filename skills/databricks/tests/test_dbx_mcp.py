@@ -15,7 +15,7 @@ from fastmcp.tools.function_tool import FunctionTool  # noqa: E402
 from test_dbx import FakeWorkspace, workspace  # noqa: E402,F401  (fixture)
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "dbx_mcp.py"
-TOOLS = ["databricks_setup", "databricks_sql", "databricks_schema", "databricks_ask", "databricks_compute"]
+TOOLS = ["databricks_setup", "databricks_sql", "databricks_schema", "databricks_compute"]
 
 
 def load_like_server(script: Path, function_name: str):
@@ -120,9 +120,9 @@ def test_registration_paths_resolve_in_repo_layout(tmp_path):
 
     import yaml
 
-    # <repo>/mcp/mcp_tools.yaml and <repo>/domains/fde/skills/databricks/, as the snippet expects.
+    # <repo>/mcp/mcp_tools.yaml and <repo>/knowledge-base/domains/fde/skills/databricks/, as the snippet expects.
     skill = SCRIPT.parent.parent
-    shutil.copytree(skill / "scripts", tmp_path / "domains" / "fde" / "skills" / "databricks" / "scripts")
+    shutil.copytree(skill / "scripts", tmp_path / "knowledge-base" / "domains" / "fde" / "skills" / "databricks" / "scripts")
     (tmp_path / "mcp").mkdir()
     for e in yaml.safe_load((skill / "mcp_tools.databricks.yaml").read_text(encoding="utf-8")):
         # The server joins config_dir / script, the same as here.
@@ -171,7 +171,7 @@ def test_register_inserts_replaces_and_keeps_the_rest(tmp_path):
     reg = _register_module()
     reg.SKILL, reg.SNIPPET, reg.ADAPTER = skill, skill / "mcp_tools.databricks.yaml", skill / "scripts" / "dbx_mcp.py"
     for _ in range(2):  # a second run updates, it does not duplicate
-        names = reg.register(cfg)
+        names = reg.register(cfg, remove=("greet",))
 
     raw = cfg.read_bytes()
     assert b"\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b"")  # CRLF kept
@@ -180,7 +180,7 @@ def test_register_inserts_replaces_and_keeps_the_rest(tmp_path):
     data = yaml.safe_load(text)
     assert data["settings"] == {"log_level": "info"}  # later key kept
     tools = [t["name"] for t in data["tools"]]
-    assert tools[0] == "greet" and tools.count("fde-databricks-sql") == 1
+    assert "greet" not in tools and tools.count("fde-databricks-sql") == 1
     assert set(names) <= set(tools)
     sql = next(t for t in data["tools"] if t["name"] == "fde-databricks-sql")
     assert sql["script"] == "../domains/fde/skills/databricks/scripts/dbx_mcp.py"

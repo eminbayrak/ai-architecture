@@ -61,7 +61,7 @@ Pass `-p <name>` on every command. If the user did not say which workspace, and 
 | Columns and types | `dbx schema -p ws13 cat.sch.table` |
 | Metric views in a schema | `dbx sql -p ws13 "SHOW VIEWS IN cat.sch"`, then `DESCRIBE TABLE EXTENDED` on one of them |
 
-- **Genie (`ask`):** Do not put double quotes inside the question. Reuse the same `-s` label for follow-up questions. Genie prints the SQL it ran. Show that SQL to the user with the answer. If Genie is not turned on for the workspace, write the SQL yourself.
+- **Genie (`ask`):** Do not put double quotes inside the question. Reuse the same `-s` label for follow-up questions. Genie prints the SQL it ran. Show that SQL to the user with the answer. If Genie is not turned on for the workspace, or `ask` times out, write the SQL yourself with `sql`. On some workspaces the SQL warehouse API never answers, and Genie needs it.
 - **Metric views:** Wrap every measure in `MEASURE()`. `SELECT *` does not work on a metric view.
 - **Your own SQL:** Look at the columns with `schema` first. Do not guess column names.
 

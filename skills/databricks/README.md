@@ -28,6 +28,22 @@ On top of the CLI, `dbx.py` adds a read-only guard, a default row limit, a compu
 
 Why no JDBC: the Databricks JDBC driver is a Java client for the same APIs. It adds a JVM and a jar to install, and gives nothing an agent needs.
 
+## Install (Windows, new user)
+
+Run from the root of the repo that holds the MCP server (`mcp\mcp_tools.yaml`), in PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force domains\fde\skills | Out-Null
+Invoke-WebRequest https://github.com/eminbayrak/ai-architecture/archive/refs/heads/add-databricks-skill.zip -OutFile $env:TEMP\dbxskill.zip -UseBasicParsing
+Expand-Archive $env:TEMP\dbxskill.zip $env:TEMP\dbxskill -Force
+Copy-Item $env:TEMP\dbxskill\ai-architecture-add-databricks-skill\skills\databricks domains\fde\skills -Recurse -Force
+.venv\Scripts\python.exe domains\fde\skills\databricks\scripts\register_mcp.py mcp\mcp_tools.yaml
+```
+
+Then restart the MCP server (restart Poolside) and ask it to "check my Databricks setup". The first run installs the Databricks CLI if needed and signs you in with SSO.
+
+Running the same commands again updates the skill. `register_mcp.py` replaces its own entries and keeps the first `.bak`.
+
 ## MCP registration
 
 For a FastMCP server that loads Python scripts as tools (one function per tool):

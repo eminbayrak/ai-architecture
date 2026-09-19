@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import http.server
 import importlib.util
 import json
@@ -8,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -169,6 +171,7 @@ class FakeWorkspace(http.server.BaseHTTPRequestHandler):
     requests: list[tuple[str, str, dict]] = []
     cluster_state = "TERMINATED"
     status_calls = 0
+    hang_warehouses = False
 
     def _reply(self, obj, code=200):
         body = json.dumps(obj).encode()
@@ -218,6 +221,8 @@ class FakeWorkspace(http.server.BaseHTTPRequestHandler):
             return self._reply({})
         if p == "/api/2.0/preview/scim/v2/Me":
             return self._reply({"userName": "user@example.com"})
+        if p == "/api/2.0/sql/warehouses" and cls.hang_warehouses:
+            time.sleep(5)  # some workspaces never answer this API
         if p == "/api/2.0/sql/warehouses":
             return self._reply({"warehouses": [{"id": "w1", "name": "Shared", "state": "STOPPED",
                                                 "warehouse_type": "PRO", "enable_serverless_compute": True}]})
@@ -238,6 +243,7 @@ def workspace(tmp_path):
     FakeWorkspace.requests = []
     FakeWorkspace.cluster_state = "TERMINATED"
     FakeWorkspace.status_calls = 0
+    FakeWorkspace.hang_warehouses = False
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), FakeWorkspace)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     host = f"http://127.0.0.1:{server.server_address[1]}"
@@ -405,3 +411,34 @@ def test_e2e_open_stdin_does_not_hang(workspace):
     finally:
         p.stdin.close()
     assert json.loads(p.stdout.read())
+
+
+def test_compute_lists_clusters_when_warehouse_api_hangs(workspace, monkeypatch, capsys):
+    for k, v in workspace.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(dbx, "WAREHOUSE_API_TIMEOUT_S", 1)
+    FakeWorkspace.hang_warehouses = True
+    assert dbx.cmd_compute(argparse.Namespace(profile="wh", use=None)) == 0
+    out = capsys.readouterr().out
+    assert "did not answer" in out and "cluster:0101-000000-abcd" in out
+
+
+def test_ask_times_out_with_a_clear_message(tmp_path, monkeypatch):
+    slow = tmp_path / "databricks"
+    slow.write_text("#!/bin/sh\nsleep 5\n")
+    slow.chmod(0o755)
+    monkeypatch.setattr(dbx, "require_cli", lambda: str(slow))
+    monkeypatch.setattr(dbx, "resolve_profile", lambda name: "ws1")
+    monkeypatch.setattr(dbx, "ASK_TIMEOUT_S", 1)
+    with pytest.raises(dbx.DbxError, match="Genie did not answer"):
+        dbx.cmd_ask(argparse.Namespace(profile=None, question="q", session=None))
+
+
+def test_timeout_message_hides_the_cli_path(monkeypatch, capsys):
+    def boom(a):
+        raise subprocess.TimeoutExpired([r"C:\Users\someone\AppData\databricks.exe", "warehouses", "list"], 120)
+
+    monkeypatch.setattr(dbx, "cmd_doctor", boom)
+    assert dbx.main(["doctor"]) == 2
+    err = capsys.readouterr().err
+    assert "timed out after 120 s: databricks warehouses list" in err and "someone" not in err

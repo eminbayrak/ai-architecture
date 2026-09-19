@@ -34,6 +34,9 @@ MIN_CLI = (1, 9, 0)  # `genie ask` and `experimental aitools tools query`
 DEFAULT_LIMIT = 1000
 CLUSTER_START_TIMEOUT_S = 15 * 60
 COMMAND_TIMEOUT_S = 10 * 60
+# Some workspaces never answer the SQL warehouse API (seen on Azure Government). Fail fast there.
+WAREHOUSE_API_TIMEOUT_S = 30
+ASK_TIMEOUT_S = 5 * 60
 # DBX_POLL_SECONDS exists for tests. Real runs use the defaults.
 POLL_S = float(os.environ.get("DBX_POLL_SECONDS", 3))
 CLUSTER_POLL_S = float(os.environ.get("DBX_POLL_SECONDS", 10))
@@ -484,7 +487,13 @@ def resolve_compute(profile: str, warehouse: str | None, cluster: str | None) ->
     if env:
         return "warehouse", env
     try:
-        info = cli_json(["experimental", "aitools", "tools", "get-default-warehouse", "-p", profile])
+        info = cli_json(["experimental", "aitools", "tools", "get-default-warehouse", "-p", profile],
+                        timeout=WAREHOUSE_API_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        raise DbxError(
+            f"The SQL warehouse API of '{profile}' did not answer. "
+            f"Run: dbx compute -p {profile}  and pick a cluster."
+        ) from None
     except DbxError as e:
         raise DbxError(
             f"No SQL warehouse found for '{profile}' ({e}). "
@@ -686,7 +695,12 @@ def cmd_compute(a: argparse.Namespace) -> int:
     cur = configured_compute(profile)
     print(f"Current: {f'{cur[0]} {cur[1]} ({cur[2]})' if cur else 'auto (default SQL warehouse)'}")
     print("SQL warehouses (preferred for SQL):")
-    for w in cli_json(["warehouses", "list", "-p", profile]) or []:
+    try:
+        warehouses = cli_json(["warehouses", "list", "-p", profile], timeout=WAREHOUSE_API_TIMEOUT_S) or []
+    except (DbxError, subprocess.TimeoutExpired):
+        warehouses = []
+        print(f"  none: the SQL warehouse API did not answer in {WAREHOUSE_API_TIMEOUT_S} s. Use a cluster.")
+    for w in warehouses:
         kind = "serverless" if w.get("enable_serverless_compute") else w.get("warehouse_type", "").lower()
         print(f"  warehouse:{w['id']:<20} {w.get('state', ''):<10} {kind:<10} {w.get('name', '')}")
     print("Clusters:")
@@ -749,7 +763,13 @@ def cmd_ask(a: argparse.Namespace) -> int:
         args += ["-o", "json"]  # a tool reads this, not a person
     if a.session:
         args += ["-s", a.session]
-    return subprocess.run(args, check=False, **NO_STDIN).returncode
+    try:
+        return subprocess.run(args, check=False, timeout=ASK_TIMEOUT_S, **NO_STDIN).returncode
+    except subprocess.TimeoutExpired:
+        raise DbxError(
+            f"Genie did not answer in {ASK_TIMEOUT_S // 60} minutes. Genie may be off for '{profile}', "
+            "or its SQL warehouse API does not answer. Use dbx sql instead."
+        ) from None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -811,7 +831,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"dbx: {e}", file=sys.stderr)
         return 2
     except subprocess.TimeoutExpired as e:
-        print(f"dbx: timed out after {int(e.timeout)} s: {' '.join(map(str, e.cmd[:3]))}", file=sys.stderr)
+        # Name the command, not the CLI path: the path holds the user name.
+        what = " ".join(["databricks", *map(str, e.cmd[1:3])])
+        print(f"dbx: timed out after {int(e.timeout)} s: {what}", file=sys.stderr)
         return 2
 
 

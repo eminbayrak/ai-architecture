@@ -46,6 +46,8 @@ Remove-Item -Recurse -Force knowledge-base\domains\fde\skills\databricks
 .venv\Scripts\python.exe knowledge-base\domains\fde\skills\databricks\scripts\register_mcp.py mcp\mcp_tools.yaml --remove fde-databricks --remove fde-databricks-query --remove fde-databricks-list --remove fde-databricks-status --remove fde-databricks-export
 ```
 
+If the repo copies skill docs to `.poolside/skills` with a deploy step, delete the old deployed `databricks` folder there and run that step again.
+
 Then restart the MCP server (restart Poolside) and ask it to "check my Databricks setup". The first run installs the Databricks CLI if needed and signs you in with SSO.
 
 Running the same commands again updates the skill. `register_mcp.py` replaces its own entries and keeps the first `.bak`.

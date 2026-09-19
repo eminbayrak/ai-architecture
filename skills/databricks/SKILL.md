@@ -26,7 +26,7 @@ Every call goes through one launcher. It wraps the official Databricks CLI.
 - **Windows:** `<skill>\scripts\dbx.cmd`. From PowerShell, call it as `& "<skill>\scripts\dbx.cmd" ...`.
 - **macOS / Linux:** `<skill>/scripts/dbx`
 
-The examples below write `dbx`. Use the launcher for your OS.
+The examples below write `dbx`. Use the launcher for your OS. The launcher is in `scripts/` of this skill's source folder. A deployed copy of this file (for example under `.poolside/skills/`) has no `scripts/`. Then find `dbx.cmd` in the repo, or use the MCP tools.
 
 No JDBC, no Java, no pip packages. Never write a new HTTP client or a new Python script for Databricks.
 

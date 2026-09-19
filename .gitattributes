@@ -1,0 +1,2 @@
+# Batch files need CRLF on Windows.
+skills/databricks/scripts/*.cmd text eol=crlf

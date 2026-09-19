@@ -106,6 +106,8 @@ You can also copy a skill folder into `.poolside/skills/<name>/` as a real direc
 
 **Jira (company Data Center):** `skills/jira` — Bearer PAT. One launcher: bash, else PowerShell, else Python stdlib. No extra installs. Token: `~/.config/atlassian/jira.token` or `%USERPROFILE%\.config\atlassian\jira.token`. See `skills/jira/README.md`.
 
+**Databricks (read-only):** `skills/databricks` - SQL, metric views and Genie through the official Databricks CLI. No JDBC. On first use the agent installs the CLI and signs the user in with SSO in the browser. Each user keeps their own workspaces in `~/.databrickscfg`. See `skills/databricks/README.md`.
+
 **FDE knowledge base:** `skills/fde-kb` - Obsidian vault as source of truth, local SQLite as search memory (FTS5 always; sqlite-vec + Model2Vec when a local snapshot is present). Copy the folder to `.poolside/skills/fde-kb`, set `FDE_KB_VAULT`, then `index` / `search`. See `skills/fde-kb/README.md` and `skills/fde-kb/docs/demo-walkthrough.md`.
 
 **Graph memory:** `skills/graph-memory` - closed ontology, three SQLite tables, recursive walk, CLI `recall`. No model call in the walker. Optional `compare` needs sibling fde-kb. See `skills/graph-memory/README.md`.
@@ -128,6 +130,7 @@ ai-architecture/
   agents/routing/          catalog, heuristics, resolve()
   agents/graphs/fde_crew.py
   skills/jira/               Data Center PAT + curl wrapper
+  skills/databricks/         read-only SQL / metric views / Genie via the Databricks CLI
   skills/fde-kb/             Obsidian + sqlite-vec RAG (self-contained; copy this folder)
   skills/fde-kb/docs/        architecture for the skill
   skills/graph-memory/       typed graph, SQLite walk, model-free recall

@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 # Default install set. Each folder under skills/ is self-contained; pick with --skills.
-HARNESS_SKILLS = ("fde-kb", "jira", "graph-memory", "llm-wiki", "retrieval-bench")
+HARNESS_SKILLS = ("fde-kb", "jira", "databricks", "graph-memory", "llm-wiki", "retrieval-bench")
 
 SKILL_CATALOG = (
     ("fde-kb", "Hybrid search over an Obsidian vault (pull RAG). No LLM in the indexer."),
@@ -32,6 +32,7 @@ SKILL_CATALOG = (
     ("llm-wiki", "Compiled markdown wiki. Agent ingest; CLI query and lint."),
     ("retrieval-bench", "One-command HTML bench of retrieval skills against a repo or vault. No model API; harness agent does llm-wiki ingest."),
     ("jira", "Jira Data Center REST via a local Bearer PAT."),
+    ("databricks", "Read-only Databricks SQL, metric views and Genie via the Databricks CLI. OAuth login."),
 )
 
 

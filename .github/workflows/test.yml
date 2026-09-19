@@ -19,6 +19,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python scripts/link-skills.py
+      # Runs the databricks skill end-to-end tests (real CLI, local fake workspace).
+      - uses: databricks/setup-cli@main
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --group dev --python ${{ matrix.python-version }}
       - run: uv run --python ${{ matrix.python-version }} pytest

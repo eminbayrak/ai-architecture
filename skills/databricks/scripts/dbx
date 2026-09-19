@@ -1,0 +1,10 @@
+#!/bin/sh
+# macOS / Linux launcher. Runs dbx.py with the first Python 3 it finds.
+HERE=$(cd "$(dirname "$0")" && pwd)
+for py in python3 python; do
+  if command -v "$py" >/dev/null 2>&1; then
+    exec "$py" "$HERE/dbx.py" "$@"
+  fi
+done
+echo "dbx: Python 3 not found. Install it (macOS: xcode-select --install), then retry." >&2
+exit 1

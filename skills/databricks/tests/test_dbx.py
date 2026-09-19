@@ -227,7 +227,9 @@ class FakeWorkspace(http.server.BaseHTTPRequestHandler):
             return self._reply({"warehouses": [{"id": "w1", "name": "Shared", "state": "STOPPED",
                                                 "warehouse_type": "PRO", "enable_serverless_compute": True}]})
         if p == "/api/2.0/clusters/list":
-            return self._reply({"clusters": [{"cluster_id": "0101-000000-abcd", "cluster_name": "team", "state": "RUNNING"}]})
+            return self._reply({"clusters": [{"cluster_id": "0101-000000-abcd", "cluster_name": "team", "state": "RUNNING", "cluster_source": "UI"},
+                {"cluster_id": "0101-000000-job1", "cluster_name": "job-1-run-2", "state": "TERMINATED",
+                 "cluster_source": "JOB"}]})
         return self._reply({"error_code": "NOT_FOUND", "message": p}, 404)
 
     do_GET = do_POST = _handle
@@ -346,6 +348,7 @@ def test_e2e_compute_lists_choices(workspace):
     assert r.returncode == 0, r.stderr
     assert "warehouse:w1" in r.stdout and "serverless" in r.stdout
     assert "cluster:0101-000000-abcd" in r.stdout
+    assert "job1" not in r.stdout and "1 job and pipeline clusters not shown" in r.stdout
 
 
 TRICKY_SQL = """SELECT region FROM s.t

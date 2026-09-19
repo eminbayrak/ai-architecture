@@ -703,9 +703,14 @@ def cmd_compute(a: argparse.Namespace) -> int:
     for w in warehouses:
         kind = "serverless" if w.get("enable_serverless_compute") else w.get("warehouse_type", "").lower()
         print(f"  warehouse:{w['id']:<20} {w.get('state', ''):<10} {kind:<10} {w.get('name', '')}")
-    print("Clusters:")
-    for c in cli_json(["clusters", "list", "-p", profile]) or []:
+    print("Clusters (all-purpose):")
+    clusters = cli_json(["clusters", "list", "-p", profile]) or []
+    # Job and pipeline clusters are short-lived and can number in the hundreds. Nobody picks one for SQL.
+    shown = [c for c in clusters if c.get("cluster_source", "UI") in {"UI", "API"}]
+    for c in shown:
         print(f"  cluster:{c['cluster_id']:<22} {c.get('state', ''):<10} {c.get('cluster_name', '')}")
+    if len(shown) < len(clusters):
+        print(f"  ({len(clusters) - len(shown)} job and pipeline clusters not shown)")
     print(f"Save a choice with: dbx compute -p {profile} --use warehouse:<id>")
     return 0
 
